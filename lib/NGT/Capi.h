@@ -31,11 +31,23 @@ typedef void* NGTObjectSpace;
 typedef void* NGTObjectDistances;
 typedef void* NGTError;
 typedef void* NGTOptimizer;
+typedef void* NGTObjects;
 
 typedef struct {
   ObjectID id;
   float distance;
 } NGTObjectDistance;
+
+typedef void* NGTVectors;
+typedef struct {
+  long unsigned int size;
+  NGTObjectDistances vector;
+} NGTVector;
+
+bool ngt_extract_graph(NGTIndex index, NGTObjects results, NGTError error);
+NGTObjects ngt_create_empty_objects(NGTError error);
+void ngt_destroy_objects(NGTObjects);
+void ngt_get_object(NGTVector *vector,const NGTObjects results, const uint32_t i, NGTError error);
 
 NGTIndex ngt_open_index(const char *, NGTError);
 

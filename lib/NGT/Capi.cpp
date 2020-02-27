@@ -20,10 +20,11 @@
 
 #include "NGT/Index.h"
 #include "NGT/GraphOptimizer.h"
+#include "NGT/GraphReconstructor.h"
 #include "Capi.h"
 
 static bool operate_error_string_(const std::stringstream &ss, NGTError error){
-  if(error != NULL){  
+  if(error != NULL){
     try{
       std::string *error_str = static_cast<std::string*>(error);
       *error_str = ss.str();
@@ -34,6 +35,46 @@ static bool operate_error_string_(const std::stringstream &ss, NGTError error){
   }else{
     std::cerr << ss.str() << std::endl;
   }
+  return true;
+}
+
+NGTObjects ngt_create_empty_objects(NGTError error) {
+  try{
+    return static_cast<NGTObjects>(new std::vector<NGT::ObjectDistances>);
+  }catch(std::exception &err) {
+    std::stringstream ss;
+    ss << "Capi : " << __FUNCTION__ << "() : Error: " << err.what();
+    operate_error_string_(ss, error);
+    return NULL;
+  }
+}
+
+static bool ngt_extract_graph_(NGT::Index *pindex, NGTObjects results) {
+  auto graph = static_cast<std::vector<NGT::ObjectDistances>*>(results);
+  NGT::GraphReconstructor::extractGraph(*graph, *pindex);
+  return true;
+}
+
+
+bool ngt_extract_graph(NGTIndex index, NGTObjects results, NGTError error) {
+  if(index == NULL || results == NULL || error == NULL){
+    std::stringstream ss;
+    ss << "Capi : " << __FUNCTION__ << "() : parametor error: index = " << index << " results = " << results;
+    operate_error_string_(ss, error);
+    return false;
+  }
+
+  NGT::Index* pindex = static_cast<NGT::Index*>(index);
+
+  try{
+    ngt_extract_graph_(pindex, results);
+  }catch(std::exception &err) {
+    std::stringstream ss;
+    ss << "Capi : " << __FUNCTION__ << "() : Error: " << err.what();
+    operate_error_string_(ss, error);
+    return false;
+  }
+  auto r = static_cast<std::vector<NGT::ObjectDistances>*>(results);
   return true;
 }
 
@@ -50,7 +91,7 @@ NGTIndex ngt_open_index(const char *index_path, NGTError error) {
     return NULL;
   }
 }
-    
+
 NGTIndex ngt_create_graph_and_tree(const char *database, NGTProperty prop, NGTError error) {
   NGT::Index *index = NULL;
   try{
@@ -419,11 +460,27 @@ uint32_t ngt_get_result_size(NGTObjectDistances results, NGTError error) {
   if(results == NULL){
     std::stringstream ss;
     ss << "Capi : " << __FUNCTION__ << "() : parametor error: results = " << results;
-    operate_error_string_(ss, error);            
+    operate_error_string_(ss, error);
     return 0;
   }
   
   return (static_cast<NGT::ObjectDistances*>(results))->size();
+}
+
+void ngt_get_object(NGTVector * vector,const NGTObjects results, const uint32_t i, NGTError error) {
+  try{
+    std::vector<uint32_t> *objects = static_cast<std::vector<uint32_t>*>(results);
+    vector->size=objects->size();
+    vector->vector=&((*objects)[i]);
+    return;
+  }catch(std::exception &err) {
+    std::stringstream ss;
+    ss << "Capi : " << __FUNCTION__ << "() : Error: " << err.what();
+    operate_error_string_(ss, error);
+    vector->size=0;
+    vector->vector=0;
+    return;
+  }
 }
 
 NGTObjectDistance ngt_get_result(const NGTObjectDistances results, const uint32_t i, NGTError error) {
@@ -643,6 +700,11 @@ uint8_t* ngt_get_object_as_integer(NGTObjectSpace object_space, ObjectID id, NGT
     operate_error_string_(ss, error);
     return NULL;
   }
+}
+
+void ngt_destroy_objects(NGTObjects results) {
+    if(results == NULL) return;
+    delete(static_cast<std::vector<NGT::ObjectDistances*>*>(results));
 }
 
 void ngt_destroy_results(NGTObjectDistances results) {
